@@ -25,7 +25,7 @@ A Stripe-like idempotent payments backend built to demonstrate payment state mac
                │                          │
                ▼                          ▼
   ┌────────────────────┐      ┌───────────────────────┐
-  │   PostgreSQL 18    │      │      Redis 7           │
+  │   PostgreSQL       │      │      Redis 7           │
   │                    │      │                        │
   │  merchants         │      │  Idempotency cache     │
   │  payment_intents   │      │  (24h TTL, per-key)    │
@@ -77,6 +77,8 @@ This guarantees atomicity — no partial state is ever possible.
 ### Idempotency Keys
 The client sends an `Idempotency-Key: <uuid>` header. The response is cached in Redis with a 24-hour TTL, keyed by `merchant_id + key`. Duplicate requests return the cached response immediately — no DB write, no bank call. This prevents double charges on network retries.
 
+There is also a DB-level `UNIQUE(merchant_id, idempotency_key)` constraint as a second line of defence: if two concurrent requests with the same brand-new key both pass the Redis cache check simultaneously, the database constraint rejects the duplicate insert and the API recovers gracefully by fetching the existing row.
+
 ### SELECT FOR UPDATE (Row Locking)
 When confirming a payment, the service acquires a row-level lock on the `payment_intents` row before reading its status. If two concurrent confirm requests arrive simultaneously, one blocks at the lock and waits. When it unblocks, it reads `status = PROCESSING` or `SUCCEEDED` and returns a 409 — the bank is never called twice.
 
@@ -104,11 +106,12 @@ Keys are generated as `lp_<32 random bytes hex>` using `secrets.token_hex`. The 
 Deterministic based on payment amount (last digit):
 
 | Last digit | Outcome    | Example amounts |
-|-----------|------------|-----------------|
-| 0         | SUCCEEDED  | 1000, 2000, 5000 |
-| 1         | FAILED     | 1001, 2001       |
-| 2         | TIMED_OUT  | 1002, 2002       |
-| other     | SUCCEEDED  | 1003, 1005, 1009 |
+|-----------|------------|--------------------|
+| 1         | FAILED     | 1001, 2001         |
+| 2         | TIMED_OUT  | 1002, 2002         |
+| other     | SUCCEEDED  | 1000, 1003, 5000   |
+
+This makes tests fully deterministic without any mocking of the bank.
 
 ---
 
@@ -117,7 +120,7 @@ Deterministic based on payment amount (last digit):
 | Layer       | Technology           |
 |-------------|----------------------|
 | API         | FastAPI + Uvicorn    |
-| Database    | PostgreSQL 18        |
+| Database    | PostgreSQL           |
 | Migrations  | Alembic              |
 | Cache       | Redis 7              |
 | DB Driver   | psycopg2-binary      |
@@ -141,7 +144,7 @@ pip install -r requirements.txt
 
 # 3. Copy env and configure
 copy .env.example .env
-# Edit .env with your PostgreSQL credentials
+# Edit .env with your PostgreSQL credentials and a strong SECRET_KEY
 
 # 4. Run migrations
 alembic upgrade head
@@ -215,11 +218,20 @@ pytest tests/ -v
 **52 tests** covering:
 - Merchant registration and API key authentication
 - Payment intent create / confirm (success, decline, timeout)
-- Idempotency key deduplication
-- Concurrent confirm requests (SELECT FOR UPDATE)
+- Idempotency key deduplication (Redis cache + DB constraint)
+- Concurrent confirm requests (SELECT FOR UPDATE prevents double-charge)
 - Double-entry ledger entries and balance
 - Ledger invariant under concurrent load (20 threads)
 - Webhook outbox atomicity (event created in same transaction as payment)
 - HMAC signature generation and verification
-- Webhook retry backoff and max-attempts handling
+- Webhook retry backoff (exponential delays with ±20% jitter) and max-attempts handling
 - Full end-to-end flow (12-step integration test)
+
+---
+
+## What This Project Does Not Do
+
+- No real card processing — the mock bank is deterministic and synchronous
+- No refunds, chargebacks, or multi-currency
+- No rate limiting on the merchant registration endpoint
+- The mock bank does not simulate actual network latency for TIMED_OUT — it returns the timeout outcome immediately

@@ -8,6 +8,7 @@ Strategy:
   - HMAC signing is tested as a pure function
 """
 import json
+import os
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -45,10 +46,10 @@ def auth(merchant):
 
 
 @pytest.fixture()
-def worker_conn(raw_conn):
+def worker_conn():
     """A psycopg2 connection in autocommit=False mode for worker tests."""
     conn = psycopg2.connect(
-        "postgresql://postgres:M%40haveer2004@localhost:5432/ledgerpay",
+        os.environ["DATABASE_URL"],
         cursor_factory=psycopg2.extras.RealDictCursor,
     )
     conn.autocommit = False

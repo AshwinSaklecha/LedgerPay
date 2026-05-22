@@ -1,18 +1,25 @@
 import os
+from pathlib import Path
 
 import psycopg2
 import psycopg2.extras
 import pytest
 from fastapi.testclient import TestClient
 
-# Point to the test database (same DB, tests clean up after themselves)
-os.environ.setdefault(
-    "DATABASE_URL",
-    "postgresql://postgres:M%40haveer2004@localhost:5432/ledgerpay",
-)
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
-os.environ.setdefault("SECRET_KEY", "test-secret")
-os.environ.setdefault("ENVIRONMENT", "test")
+# Load backend/.env so tests run without needing manually exported env vars.
+# os.environ.setdefault() means existing shell exports always win.
+_env_file = Path(__file__).parent.parent / ".env"
+if _env_file.exists():
+    for line in _env_file.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, _, value = line.partition("=")
+            os.environ.setdefault(key.strip(), value.strip())
+
+# Override environment to test mode
+os.environ["ENVIRONMENT"] = "test"
+# Use a safe test secret (not the production one from .env)
+os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production")
 
 from app.core.database import close_pool, init_pool  # noqa: E402
 from app.core.redis_client import get_redis, init_redis  # noqa: E402
