@@ -208,6 +208,23 @@ curl http://localhost:8000/v1/ledger/balance \
 
 ---
 
+## Deployment
+
+The API and webhook worker are deployed as a single Render web service using [`backend/start.sh`](file:///d:/LedgerPay/backend/start.sh):
+
+```bash
+python -m app.worker.webhook_worker &   # runs in background
+exec uvicorn app.main:app ...           # Render watches this process
+```
+
+**Why:** Render's free tier only includes Web Services, not Background Workers. Running both processes in one container is a cost-free workaround.
+
+**The tradeoff:** Both the API and the worker share the same PostgreSQL connection pool. Under high concurrent API load, this reduces the connections available to the worker. In a production deployment, the webhook worker would run as a separate service with its own isolated pool.
+
+This is the same approach used in the companion project [VortexQueue](https://github.com/AshwinSaklecha/VortexQueue), where the API, worker, and janitor all run in a single container.
+
+---
+
 ## Tests
 
 ```bash
