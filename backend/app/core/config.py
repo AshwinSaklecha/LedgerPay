@@ -31,6 +31,7 @@ class Settings(BaseSettings):
 
     webhook_worker_poll_interval: int = 5
     webhook_max_attempts: int = 5
+    frontend_url: str = ""
 
     @field_validator("secret_key")
     @classmethod

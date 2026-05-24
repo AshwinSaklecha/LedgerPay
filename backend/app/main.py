@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import close_pool, init_pool
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging(settings.log_level)
-    logger.info("Starting LedgerPay — environment=%s", settings.environment)
+    logger.info("Starting LedgerPay - environment=%s", settings.environment)
     init_pool()
     init_redis()
     yield
@@ -65,6 +66,13 @@ app = FastAPI(
     ],
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[settings.frontend_url] if settings.frontend_url else ["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.add_middleware(RequestIDMiddleware)
 
 
