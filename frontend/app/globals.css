@@ -36,6 +36,28 @@ input {
   color: #0a0a0a;
 }
 
+@keyframes ledger-warmup-progress {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+@keyframes ledger-content-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 ::-webkit-scrollbar {
   height: 10px;
   width: 10px;

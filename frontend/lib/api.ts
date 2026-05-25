@@ -52,6 +52,15 @@ export type RegisterResponse = Merchant & {
   api_key: string;
 };
 
+export type HealthResponse = {
+  status: string;
+  version: string;
+};
+
+export type BackendReadyOptions = {
+  timeoutMs?: number;
+};
+
 type RequestOptions = {
   auth?: boolean;
   body?: unknown;
@@ -247,4 +256,29 @@ export function getLedgerEntries(limit = 50, offset = 0) {
   return request<LedgerEntry[]>(
     `/v1/ledger/entries?limit=${limit}&offset=${offset}`,
   );
+}
+
+export async function checkBackendReady(
+  options: BackendReadyOptions = {},
+): Promise<HealthResponse> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 12000);
+
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/health`, {
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new ApiError(
+        `Health check failed with status ${response.status}`,
+        response.status,
+      );
+    }
+
+    return response.json() as Promise<HealthResponse>;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
