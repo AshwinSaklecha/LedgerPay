@@ -73,15 +73,16 @@ export class ApiError extends Error {
 
 const CONFIGURED_API_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:8000";
-const BROWSER_API_URL = "/api/backend";
 
 export const STORAGE_KEYS = {
   apiKey: "ledgerpay_api_key",
   merchant: "ledgerpay_merchant",
 } as const;
 
+// Always call the backend directly — CORS is configured on the server,
+// so the browser can reach Render without a Next.js proxy in the middle.
 function getApiBaseUrl() {
-  return typeof window === "undefined" ? CONFIGURED_API_URL : BROWSER_API_URL;
+  return CONFIGURED_API_URL;
 }
 
 function getApiKey() {
