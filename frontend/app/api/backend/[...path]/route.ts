@@ -45,7 +45,7 @@ async function proxy(request: NextRequest, context: RouteContext) {
     });
   } catch {
     return NextResponse.json(
-      { detail: "Unable to reach LedgerPay API at http://localhost:8000" },
+      { detail: `Unable to reach LedgerPay API at ${BACKEND_URL}` },
       { status: 502 },
     );
   }

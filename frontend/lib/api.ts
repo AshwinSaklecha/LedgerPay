@@ -265,7 +265,7 @@ export async function checkBackendReady(
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 12000);
 
   try {
-    const response = await fetch(`${getApiBaseUrl()}/health`, {
+    const response = await fetch("/api/backend/health", {
       cache: "no-store",
       signal: controller.signal,
     });
