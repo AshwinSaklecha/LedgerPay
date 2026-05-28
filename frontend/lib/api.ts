@@ -1,3 +1,5 @@
+import { getConfiguredBackendUrl } from "@/lib/backend-url";
+
 export type PaymentStatus =
   | "CREATED"
   | "PROCESSING"
@@ -54,7 +56,8 @@ export type RegisterResponse = Merchant & {
 
 export type HealthResponse = {
   status: string;
-  version: string;
+  version?: string;
+  source?: string;
 };
 
 export type BackendReadyOptions = {
@@ -80,8 +83,7 @@ export class ApiError extends Error {
   }
 }
 
-const CONFIGURED_API_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:8000";
+const CONFIGURED_API_URL = getConfiguredBackendUrl();
 
 export const STORAGE_KEYS = {
   apiKey: "ledgerpay_api_key",
@@ -265,7 +267,7 @@ export async function checkBackendReady(
   const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 12000);
 
   try {
-    const response = await fetch("/api/backend/health", {
+    const response = await fetch("/api/backend-ready", {
       cache: "no-store",
       signal: controller.signal,
     });

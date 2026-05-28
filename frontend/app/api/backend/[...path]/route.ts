@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getConfiguredBackendUrl } from "@/lib/backend-url";
 
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:8000";
+const BACKEND_URL = getConfiguredBackendUrl();
 
 type RouteContext = {
   params: {
